@@ -1,14 +1,14 @@
 # ESPEZ
 
-A lightweight publish/subscribe mesh network for ESP32 and ESP8266 devices. No pairing. No routing tables. No infrastructure.
+A lightweight publish/subscribe mesh network for ESP32 and ESP8266 devices. No pairing. No routing tables. No infrastructure. Works on all ESPs that support ESPNow.
 
-Any node can publish to a topic. All nodes are subscribe to all topics. The mesh handles the rest.
+Any node can publish to a topic. All nodes are subscribed to all topics. The mesh handles the rest.
 
 ---
 
 ## Why ESPEZ Exists
 
-In many applications, the easiest solution is to use multiple ESP. If you need more IO pins, just add ESPs. Need more processing power? Add an ESP. components need to be in different locations? Add more devices and let them talk.
+In many applications, the easiest solution is to use multiple ESPs. If you need more IO pins, just add ESPs. Need more processing power? Add an ESP. components need to be in different locations? Add more devices and let them talk.
 
 ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving you publish/subscribe messaging across multiple devices without managing connections, pairing tables, or routing logic.
 
@@ -35,7 +35,7 @@ Each relay node maintains a hash table of recently seen messages. Before a messa
 
 Key behaviors:
 - Local delivery always occurs if the network ID and Checksum are valid — the hash table never blocks local reception
-- Retransmission only occurs if the node has relaying enabled and no hash table match is detected
+- Relaying only occurs if the node has relaying enabled and no hash table match is detected
 - Different nodes use different hash salts, so two messages that generate the same value on one relay don't on the others 
 ---
 
@@ -73,7 +73,7 @@ help messages may be used to:
 ```cpp
 #include <ESPEZ.h>
 
-ESPEZNode node(false);  // false = endpoint only, no relay
+ESPEZNode node(); 
 
 const uint64_t TOPIC_TEMP = 0x54454D5000;
 
@@ -85,7 +85,7 @@ void loop() {
     int temp = analogRead(34);
     node.publish(TOPIC_TEMP, (uint8_t*)&temp, sizeof(temp));
     delay(1000);
-    node.loop();
+    node.loop(RELAY_OFF);
 }
 ```
 
@@ -96,11 +96,8 @@ void loop() {
 ### Creating a Node
 
 ```cpp
-ESPEZNode node(bool enableRelay);
+ESPEZNode node();
 ```
-
-`enableRelay = true` — Node acts as a mesh relay, forwarding every valid message it receives.  
-`enableRelay = false` — Node is an endpoint only. Publishes and subscribes but does not retransmit.
 
 ### Initialization
 
@@ -113,18 +110,13 @@ Call once in `setup()`. Initializes ESP-NOW, configures the broadcast peer, and 
 ### Publishing
 
 ```cpp
-node.publish(uint64_t topic, const uint8_t* payload, size_t len);
+node.publish(uint64_t (network && topic), const uint8_t* payload, size_t len);
 ```
 
-Topics are 40-bit values (0 to 2^40−1). Payload is limited to ~230 bytes. The sequence number is managed automatically and rolls over from 255 to 0.
+Network and Topic combined are 40-bit values (0 to 2^40−1). Payload is limited to ~248 bytes. checksum is 2 bytes. The sequence number is managed automatically and rolls over from 255 to 0. 
 
 ### Subscribing
 
-```cpp
-node.subscribe(uint64_t topic);
-```
-
-Only messages matching a subscribed topic are delivered to the callback.
 
 ### Receiving Messages
 
@@ -132,24 +124,17 @@ Only messages matching a subscribed topic are delivered to the callback.
 node.onMessage(void (*callback)(uint64_t topic, const uint8_t* payload, size_t len));
 ```
 
-Registers a callback invoked whenever a subscribed message arrives.
+Registers a callback invoked whenever a message arrives.
 
 ### Event Loop
 
 ```cpp
-node.loop();
+node.loop(relay_enable);
 ```
 
-Must be called frequently from `loop()`. Handles incoming messages, hash table match detection, and hash table maintenance.
+Must be called frequently from `loop()`. Handles incoming messages, hash table match detection, and hash table maintenance. also turns the relay on or off
 
 ### Diagnostics
-
-```cpp
-uint32_t getErrorCount();
-void resetErrorCount();
-```
-
-ESPEZ maintains a count of detected errors (checksum failures, out-of-sequence messages). Diagnostic only — no corrective action is taken.
 
 ---
 
