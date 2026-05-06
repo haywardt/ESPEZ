@@ -56,13 +56,15 @@ Receives the message from the receive function. Computes the hash and checks whe
 
 ## Help Messages
 
-Help messages use topic `0x0000000000`. The payload indicates the event type:
+Help messages use topic `0x0000000000`. `payload[0]` is always the message type.
 
-- Node ID broadcast (bytes 1–6 = hardware MAC)
-- Foreign network ID detected
-- Bad checksum
-- Skipped sequence number
-- Duplicate count since last hash table clear
+| Constant | `payload[0]` | `payload[1]` | Description |
+|---|---|---|---|
+| `ESPEZ_HELP_NODEID` | `0x01` | — | Node joined the mesh. `payload[1..6]` = hardware MAC. |
+| `ESPEZ_HELP_FOREIGN` | `0x02` | — | Packet received whose network ID doesn't match this node's. |
+| `ESPEZ_HELP_BADCHECK` | `0x03` | — | Packet received with an invalid CRC. |
+| `ESPEZ_HELP_SEQSKIP` | `0x04` | gap | Sequence gap detected on a topic. Value = number of missing packets. |
+| `ESPEZ_HELP_DUPS` | `0x05` | count | Duplicates suppressed since the last hash table clear. Value capped at 255. |
 
 Help messages can be used to:
 - Filter by minimum RSSI
