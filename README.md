@@ -190,15 +190,23 @@ If you're not sure, alarm. A lossy protocol becomes fail-safe when silence trigg
 
 ### Network Isolation
 
-ESPEZ uses broadcast addressing. Two ESPEZ meshes within radio range will see each other's traffic. In shared spaces, use a network ID:
+ESPEZ uses broadcast addressing. Two ESPEZ meshes within radio range will see each other's traffic. Always use a network ID.
+
+The network ID and topic share 40 bits. How you split them depends on how many topics you need:
 
 ```cpp
-#define NETWORK_ID 0xCAFE
-#define TOPIC_TEMP  ((uint64_t)NETWORK_ID << 24) | 0x01
-#define TOPIC_FIRE  ((uint64_t)NETWORK_ID << 24) | 0x02
+// Few topics — use a large network ID for strong isolation
+#define NETWORK_ID 0xCAFEBABE00  // 32-bit network ID, 8 bits for topics (256 topics)
+#define TOPIC_TEMP  NETWORK_ID | 0x01
+#define TOPIC_FIRE  NETWORK_ID | 0x02
+
+// Many topics — use a 1-bit network ID to maximize topic space
+#define NETWORK_ID  ((uint64_t)1 << 39)           // 1-bit network ID
+#define TOPIC_TEMP  NETWORK_ID | 0x0000000001
+#define TOPIC_FIRE  NETWORK_ID | 0x0000000002
 ```
 
-Human-readable topics like `0x54454D50` ("TEMP") are public channels. If you don't control every ESPEZ device within radio range, use a network ID.
+Use a larger network ID when isolation matters more than topic count. Use a smaller one when you need a large topic space.
 
 ### Diagnostics Topic
 
