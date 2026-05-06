@@ -68,29 +68,6 @@ help messages may be used to:
 
 
 
-## Quick Start
-
-```cpp
-#include <ESPEZ.h>
-
-ESPEZNode node(); 
-
-const uint64_t TOPIC_TEMP = 0x54454D5000;
-
-void setup() {
-    node.begin();
-}
-
-void loop() {
-    int temp = analogRead(34);
-    node.publish(TOPIC_TEMP, (uint8_t*)&temp, sizeof(temp));
-    delay(1000);
-    node.loop(RELAY_OFF);
-}
-```
-
----
-
 ## API Reference
 
 ### Creating a Node
