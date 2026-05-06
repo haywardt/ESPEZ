@@ -2,7 +2,7 @@
 
 A lightweight publish/subscribe mesh network for ESP32 and ESP8266 devices. No pairing. No routing tables. No infrastructure.
 
-Any node can publish to a topic. Any node can subscribe to a topic. The mesh handles the rest.
+Any node can publish to a topic. All nodes are subscribe to all topics. The mesh handles the rest.
 
 ---
 
@@ -31,10 +31,10 @@ ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving
 
 ESPEZ hijacks the sender's MAC address field to carry the topic (5 bytes) and sequence number (1 byte). Every broadcast frame contains exactly 6 bytes of overhead in a field that ESP-NOW already transmits.
 
-Each relay node maintains a hash table of recently seen messages. Before a message is relayed, its hash is compared to this table. If a **hash table match** is found, the message is suppressed and not relayed — preventing duplicate messages from cascading through the mesh. Different nodes use different hash salts, so a hash table match  on one node rarely causes a match on another.   
+Each relay node maintains a hash table of recently seen messages. Before a message is relayed, its hash is compared to this table. If a hash table match is found, the message is suppressed and not relayed — preventing duplicate messages from cascading through the mesh. Different nodes use different hash salts, so a hash table match  on one node rarely causes a match on another.   
 
 Key behaviors:
-- Local delivery always occurs if the node is subscribed to the topic — the hash table never blocks local reception
+- Local delivery always occurs if the network ID and Checksum are valid — the hash table never blocks local reception
 - Retransmission only occurs if the node has relaying enabled and no hash table match is detected
 - Different nodes use different hash salts, so two messages that generate the same value on one relay don't on the others 
 ---
@@ -43,13 +43,15 @@ Key behaviors:
 
   combines the network ID, the topic ID, and the sequence number into the MAC address field. It computes the checksum and sends the message via espnow.
 
-## The relay function -
-  receives the message from the receive function. it computes the hash and checks to see if it appears to be a recent message. if it is it is dropped and the DUP mesg counter is incremented. Otherwise the MAC is duplicated and the message is sent to espnow for transmission.
-
-the receive function -
+## the receive function -
   triggered by on_espnow_receive it checks the network ID and the checksum if these are invalid it sends a help message. otherwise it passes the message to the relay function. it sends the message on_espez_receive callback.  it also checks the sequence number and if any messages were drop it generates a help message. this cannot be done by the relay function because a message may take different paths depending on hash salts in relays.
 
 receive clients, essentially subscribe to all topics. There is no subscribe function. This decision was made because the client has to decide how to deal with the data that's received anyway. There's no point in filtering it twice.
+
+## The relay function -
+  receives the message from the receive function. it computes the hash and checks to see if it appears to be a recent message. if it is it is dropped and the DUP mesg counter is incremented. Otherwise the MAC is duplicated and the message is sent to espnow for retransmission.
+
+
 
 help messages are topic 0 and the payload indicates the type of event.
   - nodeid
@@ -58,6 +60,11 @@ help messages are topic 0 and the payload indicates the type of event.
   - bad checksum
   - x duplicates detected since hashtable was cleared
   
+help messages may be used to:
+  - minimum RSSI filtering 
+  - change network channels
+  - enable different relays
+  - adjust node or antenna placement
 
 
 
