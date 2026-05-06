@@ -8,7 +8,7 @@ Any node can publish to a topic. Any node can subscribe to a topic. The mesh han
 
 ## Why ESPEZ Exists
 
-Running wires is expensive, heavy, and time-consuming. WiFi needs an access point. Bluetooth range is limited. LoRa requires additional hardware.
+In many applications, the easiest solution is to use multiple ESP. If you need more IO pins, just add ESPs. Need more processing power? Add an ESP. components need to be in different locations? Add an ESP. If you want it a controller communication, you have to design the protocol and physical layer yourself. WiFi needs an access point. Bluetooth range is limited. LoRa requires additional hardware.
 
 ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving you publish/subscribe messaging across multiple devices without managing connections, pairing tables, or routing logic.
 
@@ -18,7 +18,7 @@ ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving
 - Robot swarms and multi-controller systems
 - Boat telemetry
 - Home automation without WiFi
-- Any project where wiring is difficult or impossible
+- Any project where multiple controllers would be desirable.
 
 **Not a good fit:**
 - Applications requiring guaranteed delivery of every packet
