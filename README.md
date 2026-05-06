@@ -39,6 +39,26 @@ Key behaviors:
 - Different nodes use different hash salts, so two messages that generate the same value on one relay don't on the others 
 ---
 
+The publish function -
+
+  combines the network ID, the topic ID, and the sequence number into the MAC address field. It computes the checksum and sends the message via espnow.
+
+The relay function -
+  receives the message from the receive function. it computes the hash and checks to see if it appears to be a recent message. if it is it is dropped and the DUP mesg counter is incremented. Otherwise the MAC is duplicated and the message is sent to espnow for transmission.
+
+the receive function -
+  triggered by on_espnow_receive it checks the network ID and the checksum if these are invalid it sends a help message. otherwise it passes the message to the relay function and checks to see if this node is subscribed to the topic. if so it passes the message to the on_espez_receive callback. it also checks the sequence number and if any messages were drop it generates a help message. this cannot be done by the relay function because a message may take different paths depending on hash salts in relays.
+
+help messages are topic 0 and the payload indicates the type of event.
+  - nodeid
+  - foreign network detected.
+  - skipped seq number
+  - bad checksum
+  - x duplicates detected since hashtable was cleared
+  
+
+
+
 ## Quick Start
 
 ```cpp
