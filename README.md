@@ -31,40 +31,44 @@ ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving
 
 ESPEZ hijacks the sender's MAC address field to carry the topic (5 bytes) and sequence number (1 byte). Every broadcast frame contains exactly 6 bytes of overhead in a field that ESP-NOW already transmits.
 
-Each relay node maintains a hash table of recently seen messages. Before a message is relayed, its hash is compared to this table. If a hash table match is found, the message is suppressed and not relayed — preventing duplicate messages from cascading through the mesh. Different nodes use different hash salts, so a hash table match  on one node rarely causes a match on another.   
+Each relay node maintains a hash table of recently seen messages. Before a message is relayed, its hash is compared to this table. If a hash table match is found, the message is suppressed and not relayed — preventing duplicate messages from cascading through the mesh. Different nodes use different hash salts, so a hash table match on one node rarely causes a match on another.
 
 Key behaviors:
-- Local delivery always occurs if the network ID and Checksum are valid — the hash table never blocks local reception
+- Local delivery always occurs if the network ID and checksum are valid — the hash table never blocks local reception
 - Relaying only occurs if the node has relaying enabled and no hash table match is detected
-- Different nodes use different hash salts, so two messages that generate the same value on one relay don't on the others 
+- Different nodes use different hash salts, so two messages that generate the same value on one relay don't on the others
+
 ---
 
-## The publish function -
+## The Publish Function
 
-  combines the network ID, the topic ID, and the sequence number into the MAC address field. It computes the checksum and sends the message via espnow.
+Combines the network ID, the topic ID, and the sequence number into the MAC address field. Computes the checksum and sends the message via ESP-NOW.
 
-## the receive function -
-  triggered by on_espnow_receive it checks the network ID and the checksum if these are invalid it sends a help message. otherwise it passes the message to the relay function. it sends the message on_espez_receive callback.  it also checks the sequence number and if any messages were drop it generates a help message. this cannot be done by the relay function because a message may take different paths depending on hash salts in relays.
+## The Receive Function
 
-receive clients, essentially subscribe to all topics. There is no subscribe function. This decision was made because the client has to decide how to deal with the data that's received anyway. There's no point in filtering it twice.
+Triggered by `on_espnow_receive`. Checks the network ID and checksum — if invalid, sends a help message. Otherwise passes the message to the relay function and invokes the `on_espez_receive` callback. Also checks the sequence number and generates a help message if any packets were dropped. This check cannot be done by the relay function because a message may take different paths depending on hash salts in relays.
 
-## The relay function -
-  receives the message from the receive function. it computes the hash and checks to see if it appears to be a recent message. if it is it is dropped and the DUP mesg counter is incremented. Otherwise the MAC is duplicated and the message is sent to espnow for retransmission.
+All nodes receive all topics. There is no subscribe function — the receiver has to handle incoming data anyway, so filtering it twice serves no purpose.
 
+## The Relay Function
 
+Receives the message from the receive function. Computes the hash and checks whether it matches a recent message. If it does, the message is dropped and the duplicate counter is incremented. Otherwise the MAC is reconstructed and the message is retransmitted via ESP-NOW.
 
-help messages are topic 0 and the payload indicates the type of event.
-  - nodeid
-  - foreign network detected.
-  - skipped seq number
-  - bad checksum
-  - x duplicates detected since hashtable was cleared
-  
-help messages may be used to:
-  - minimum RSSI filtering 
-  - change network channels
-  - enable different relays
-  - adjust node or antenna placement
+## Help Messages
+
+Help messages use topic `0x0000000000`. The payload indicates the event type:
+
+- Node ID broadcast
+- Foreign network detected
+- Skipped sequence number
+- Bad checksum
+- Duplicate count since last hash table clear
+
+Help messages can be used to:
+- Filter by minimum RSSI
+- Change network channels
+- Enable or disable specific relays
+- Guide node or antenna placement
 
 
 
@@ -87,13 +91,14 @@ Call once in `setup()`. Initializes ESP-NOW, configures the broadcast peer, and 
 ### Publishing
 
 ```cpp
-node.publish(uint64_t (network && topic), const uint8_t* payload, size_t len);
+node.publish(uint64_t topic, const uint8_t* payload, size_t len);
 ```
 
-Network and Topic combined are 40-bit values (0 to 2^40−1). Payload is limited to ~248 bytes. checksum is 2 bytes. The sequence number is managed automatically and rolls over from 255 to 0. 
+Network and topic combined are 40-bit values (0 to 2^40−1). Payload is limited to ~248 bytes. The checksum is 2 bytes. The sequence number is managed automatically and rolls over from 255 to 0.
 
 ### Subscribing
 
+There is no subscribe function. All nodes receive all topics. Filter by topic inside the `onMessage` callback.
 
 ### Receiving Messages
 
@@ -109,9 +114,11 @@ Registers a callback invoked whenever a message arrives.
 node.loop(relay_enable);
 ```
 
-Must be called frequently from `loop()`. Handles incoming messages, hash table match detection, and hash table maintenance. also turns the relay on or off
+Must be called frequently from `loop()`. Handles incoming messages, hash table match detection, and hash table maintenance. Enables or disables relaying.
 
 ### Diagnostics
+
+Subscribe to topic `0x0000000000` to receive health events from all nodes in the mesh.
 
 ---
 
