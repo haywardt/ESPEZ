@@ -58,7 +58,7 @@ Receives the message from the receive function. Computes the hash and checks whe
 
 Help messages use topic `0x0000000000`. The payload indicates the event type:
 
-- Node ID broadcast
+- Node ID broadcast (bytes 1–6 = hardware MAC)
 - Foreign network ID detected
 - Bad checksum
 - Skipped sequence number
@@ -83,10 +83,10 @@ ESPEZNode node();
 ### Initialization
 
 ```cpp
-node.begin(uint64_t networkID = 0, uint8_t networkBits = 0);
+node.begin(uint64_t networkID = 0, uint8_t networkBits = 0, uint8_t channel = 0);
 ```
 
-Call once in `setup()`. Initializes ESP-NOW, configures the broadcast peer, and prepares the hash table. Pass your network ID and the number of high-order bits it occupies to enable network ID filtering — packets whose high-order bits don't match are rejected and trigger a foreign-network help message.
+Call once in `setup()`. Initializes ESP-NOW, configures the broadcast peer, and prepares the hash table. Pass your network ID and the number of high-order bits it occupies to enable network ID filtering — packets whose high-order bits don't match are rejected and trigger a foreign-network help message. All nodes in a mesh must be on the same WiFi channel; pass `channel` (1–13) to set it explicitly, or leave it at 0 to use the current channel.
 
 ### Publishing
 

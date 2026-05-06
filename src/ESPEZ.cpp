@@ -22,19 +22,23 @@ ESPEZNode *ESPEZNode::_instance = nullptr;
 
 ESPEZNode::ESPEZNode()
     : _hashSalt(0), _networkID(0), _networkMask(0),
-      _seqNum(0), _lastSeq(0), _seqInit(false),
-      _lastClear(0), _dupCount(0), _relaying(false), _callback(nullptr) {
+      _seqNum(0), _seqEvict(0),
+      _lastClear(0), _dupCount(0), _relaying(false), _callback(nullptr),
+      _helpHead(0), _helpTail(0) {
     memset(_mac,       0, sizeof(_mac));
     memset(_hashTable, 0, sizeof(_hashTable));
+    memset(_seqTable,  0, sizeof(_seqTable));
+    memset(_helpQueue, 0, sizeof(_helpQueue));
 }
 
-void ESPEZNode::begin(uint64_t networkID, uint8_t networkBits) {
+void ESPEZNode::begin(uint64_t networkID, uint8_t networkBits, uint8_t channel) {
     _instance = this;
 
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
 
 #ifdef ESP32
+    if (channel > 0) esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
     esp_wifi_get_mac(WIFI_IF_STA, _mac);
 #else
     wifi_get_macaddr(STATION_IF, _mac);
@@ -55,7 +59,7 @@ void ESPEZNode::begin(uint64_t networkID, uint8_t networkBits) {
     {
         esp_now_peer_info_t peer = {};
         memcpy(peer.peer_addr, BROADCAST, 6);
-        peer.channel = 0;
+        peer.channel = channel;
         peer.encrypt = false;
         esp_now_add_peer(&peer);
     }
@@ -64,14 +68,14 @@ void ESPEZNode::begin(uint64_t networkID, uint8_t networkBits) {
     esp_now_init();
     esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
     esp_now_add_peer(const_cast<uint8_t *>(BROADCAST),
-                     ESP_NOW_ROLE_COMBO, 1, nullptr, 0);
+                     ESP_NOW_ROLE_COMBO, channel, nullptr, 0);
     esp_now_register_recv_cb(reinterpret_cast<esp_now_recv_cb_t>(_onReceive));
 #endif
 
-    // Broadcast our node ID so the mesh knows we exist
-    uint8_t id[6];
-    memcpy(id, _mac, 6);
-    publish(ESPEZ_TOPIC_HELP, id, 6);
+    // Broadcast node ID: [ESPEZ_HELP_NODEID, mac[0..5]]
+    uint8_t id[7] = {ESPEZ_HELP_NODEID,
+                     _mac[0], _mac[1], _mac[2], _mac[3], _mac[4], _mac[5]};
+    publish(ESPEZ_TOPIC_HELP, id, 7);
 
     _lastClear = millis();
 }
@@ -126,15 +130,30 @@ void ESPEZNode::loop(bool relay_enable) {
         memset(_hashTable, 0, sizeof(_hashTable));
         _lastClear = now;
     }
+
+    // Drain help messages queued from callback context (and from above)
+    while (_helpTail != _helpHead) {
+        _HelpMsg m = _helpQueue[_helpTail];
+        _helpTail = (_helpTail + 1) % _HELP_QUEUE_SIZE;
+        uint8_t payload[2] = {m.type, m.value};
+        publish(ESPEZ_TOPIC_HELP, payload, 2);
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Receive
 // ---------------------------------------------------------------------------
 
+#ifdef ESPEZ_IDF5
+void ESPEZNode::_onReceive(const esp_now_recv_info_t *recv_info,
+                           const uint8_t *data, int len) {
+    if (_instance) _instance->_handleReceive(recv_info->src_addr, data, len);
+}
+#else
 void ESPEZNode::_onReceive(const uint8_t *mac, const uint8_t *data, int len) {
     if (_instance) _instance->_handleReceive(mac, data, len);
 }
+#endif
 
 void ESPEZNode::_handleReceive(const uint8_t *srcMac,
                                const uint8_t *data, int len) {
@@ -161,14 +180,9 @@ void ESPEZNode::_handleReceive(const uint8_t *srcMac,
         return;
     }
 
-    // Best-effort sequence gap detection (single stream; not per-sender)
-    if (topic != ESPEZ_TOPIC_HELP && _seqInit) {
-        uint8_t gap = static_cast<uint8_t>(seq - _lastSeq - 1);
-        if (gap > 0)
-            _sendHelp(ESPEZ_HELP_SEQSKIP, gap);
-    }
-    _lastSeq  = seq;
-    _seqInit  = true;
+    // Per-topic sequence gap detection
+    if (topic != ESPEZ_TOPIC_HELP)
+        _seqCheck(srcMac, seq);
 
     // Local delivery always happens — hash table never blocks reception
     if (_callback)
@@ -194,6 +208,32 @@ void ESPEZNode::_relay(const uint8_t *srcMac, const uint8_t *data, int len) {
                  const_cast<uint8_t *>(data), len);
 #endif
     _restoreMac();
+}
+
+// ---------------------------------------------------------------------------
+// Per-topic sequence tracking
+// ---------------------------------------------------------------------------
+
+void ESPEZNode::_seqCheck(const uint8_t *topicBytes, uint8_t seq) {
+    for (uint8_t i = 0; i < _SEQ_TRACKS; i++) {
+        if (_seqTable[i].valid &&
+            memcmp(_seqTable[i].topic, topicBytes, 5) == 0) {
+            uint8_t gap = seq - _seqTable[i].seq - 1;
+            if (gap > 0) _sendHelp(ESPEZ_HELP_SEQSKIP, gap);
+            _seqTable[i].seq = seq;
+            return;
+        }
+    }
+    // First packet from this topic — find an empty slot or evict round-robin
+    uint8_t slot = _seqEvict;
+    bool foundEmpty = false;
+    for (uint8_t i = 0; i < _SEQ_TRACKS; i++) {
+        if (!_seqTable[i].valid) { slot = i; foundEmpty = true; break; }
+    }
+    if (!foundEmpty) _seqEvict = (_seqEvict + 1) % _SEQ_TRACKS;
+    _seqTable[slot].valid = true;
+    memcpy(_seqTable[slot].topic, topicBytes, 5);
+    _seqTable[slot].seq = seq;
 }
 
 // ---------------------------------------------------------------------------
@@ -257,10 +297,13 @@ void ESPEZNode::_restoreMac() {
 }
 
 // ---------------------------------------------------------------------------
-// Help messages
+// Help messages — enqueued here, published from loop()
 // ---------------------------------------------------------------------------
 
 void ESPEZNode::_sendHelp(uint8_t type, uint8_t value) {
-    uint8_t payload[2] = {type, value};
-    publish(ESPEZ_TOPIC_HELP, payload, 2);
+    uint8_t next = (_helpHead + 1) % _HELP_QUEUE_SIZE;
+    if (next != _helpTail) {
+        _helpQueue[_helpHead] = {type, value};
+        _helpHead = next;
+    }
 }
