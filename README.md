@@ -235,7 +235,7 @@ With ESP-NOW at 1 Mbps and typical 10-byte payloads:
 
 - Send state, not change
 - Use timeouts for fail-safe operation
-- Add a network ID in shared spaces
+- Always use a network ID
 - Subscribe to the diagnostics topic
 - Enable relays only when needed
 
