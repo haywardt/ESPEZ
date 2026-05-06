@@ -206,6 +206,30 @@ The network ID occupies the high-order bits of the 40-bit topic field; the topic
 #define TOPIC_FIRE        NETWORK_ID | 0x0000000002
 ```
 
+### Channel Selection
+
+ESP-NOW operates on 2.4 GHz only and all nodes must be on the same channel. Channels 1, 6, and 11 are the non-overlapping choices in the 2.4 GHz band — pick one of these to minimise interference from surrounding WiFi networks.
+
+**ESPEZ without WiFi** — pass your chosen channel to `begin()` and use it on every node:
+
+```cpp
+node.begin(NETWORK_ID, 16, 6);   // all nodes on channel 6
+```
+
+**ESPEZ with WiFi STA** — when a STA connects to an AP, the radio silently shifts to the AP's channel, regardless of what was passed to `begin()`. All ESPEZ nodes must therefore connect to APs on the same channel, or the mesh will fragment. Do not pass a channel to `begin()` in this case; let the AP's channel take effect:
+
+```cpp
+WiFi.begin(ssid, password);      // AP determines the channel
+node.begin(NETWORK_ID, 16);      // channel = 0: inherit current
+```
+
+**ESPEZ with WiFi AP** — configure the AP channel before calling `begin()`, then inherit it:
+
+```cpp
+WiFi.softAP(ssid, password, 6);  // fix AP to channel 6
+node.begin(NETWORK_ID, 16);      // channel = 0: inherits channel 6
+```
+
 ### Diagnostics Topic
 
 ESPEZ reserves topic `0x0000000000` for network diagnostics. Subscribe to it to receive health information from all nodes in the mesh.
