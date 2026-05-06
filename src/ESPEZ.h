@@ -26,7 +26,7 @@ typedef void (*ESPEZCallback)(uint64_t topic, const uint8_t *payload, size_t len
 class ESPEZNode {
 public:
     ESPEZNode();
-    void begin();
+    void begin(uint64_t networkID = 0, uint8_t networkBits = 0);
     void publish(uint64_t topic, const uint8_t *payload, size_t len);
     void onMessage(ESPEZCallback callback);
     void loop(bool relay_enable = false);
@@ -37,6 +37,8 @@ private:
     uint8_t  _mac[6];                          // Original hardware MAC
     uint8_t  _hashTable[ESPEZ_HASH_SIZE / 8];  // Duplicate filter bitmap
     uint32_t _hashSalt;                        // Per-node salt derived from MAC
+    uint64_t _networkID;                       // Expected high-order bits
+    uint64_t _networkMask;                     // Mask for network ID bits
     uint8_t  _seqNum;                          // Outgoing sequence counter
     uint8_t  _lastSeq;                         // Last incoming seq (best-effort)
     bool     _seqInit;

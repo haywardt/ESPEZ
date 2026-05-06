@@ -83,10 +83,10 @@ ESPEZNode node();
 ### Initialization
 
 ```cpp
-node.begin();
+node.begin(uint64_t networkID = 0, uint8_t networkBits = 0);
 ```
 
-Call once in `setup()`. Initializes ESP-NOW, configures the broadcast peer, and prepares the hash table.
+Call once in `setup()`. Initializes ESP-NOW, configures the broadcast peer, and prepares the hash table. Pass your network ID and the number of high-order bits it occupies to enable network ID filtering — packets whose high-order bits don't match are rejected and trigger a foreign-network help message.
 
 ### Publishing
 
@@ -192,7 +192,7 @@ If you're not sure, alarm. A lossy protocol becomes fail-safe when silence trigg
 
 ESPEZ uses broadcast addressing. Two ESPEZ meshes within radio range will see each other's traffic. Always use a network ID.
 
-The network ID occupies the high-order bits of the 40-bit topic field; the topic ID occupies the low-order bits. A larger network ID leaves fewer bits for topics but increases the probability that a packet from a foreign network will fail the checksum and be rejected. A smaller network ID leaves more room for topics but reduces that protection.
+The network ID occupies the high-order bits of the 40-bit topic field; the topic ID occupies the low-order bits. When a packet arrives, the node compares the high-order bits against its own network ID and rejects any packet that doesn't match. A larger network ID has more possible values, so a foreign network is less likely to share it — detection is more reliable. A smaller network ID leaves more room for topics but increases the chance of a collision with a foreign network's ID.
 
 ```cpp
 // 16-bit network ID — 65536 possible networks, 24-bit topic space (16M topics)

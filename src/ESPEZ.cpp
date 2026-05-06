@@ -21,13 +21,14 @@ ESPEZNode *ESPEZNode::_instance = nullptr;
 // ---------------------------------------------------------------------------
 
 ESPEZNode::ESPEZNode()
-    : _hashSalt(0), _seqNum(0), _lastSeq(0), _seqInit(false),
+    : _hashSalt(0), _networkID(0), _networkMask(0),
+      _seqNum(0), _lastSeq(0), _seqInit(false),
       _lastClear(0), _dupCount(0), _relaying(false), _callback(nullptr) {
     memset(_mac,       0, sizeof(_mac));
     memset(_hashTable, 0, sizeof(_hashTable));
 }
 
-void ESPEZNode::begin() {
+void ESPEZNode::begin(uint64_t networkID, uint8_t networkBits) {
     _instance = this;
 
     WiFi.mode(WIFI_STA);
@@ -43,6 +44,11 @@ void ESPEZNode::begin() {
     // hashes land on different bits across devices.
     _hashSalt = ((uint32_t)_mac[2] << 24) | ((uint32_t)_mac[3] << 16) |
                 ((uint32_t)_mac[4] <<  8) |  _mac[5];
+
+    if (networkBits > 0 && networkBits <= 40) {
+        _networkMask = ((1ULL << networkBits) - 1) << (40 - networkBits);
+        _networkID   = networkID & _networkMask;
+    }
 
 #ifdef ESP32
     esp_now_init();
@@ -148,6 +154,12 @@ void ESPEZNode::_handleReceive(const uint8_t *srcMac,
                      (static_cast<uint64_t>(srcMac[3]) <<  8) |
                       srcMac[4];
     uint8_t seq = srcMac[5];
+
+    // Reject packets whose network ID doesn't match ours
+    if (_networkMask != 0 && (topic & _networkMask) != _networkID) {
+        _sendHelp(ESPEZ_HELP_FOREIGN, 0);
+        return;
+    }
 
     // Best-effort sequence gap detection (single stream; not per-sender)
     if (topic != ESPEZ_TOPIC_HELP && _seqInit) {
