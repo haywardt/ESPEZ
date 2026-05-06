@@ -8,7 +8,7 @@ Any node can publish to a topic. Any node can subscribe to a topic. The mesh han
 
 ## Why ESPEZ Exists
 
-In many applications, the easiest solution is to use multiple ESP. If you need more IO pins, just add ESPs. Need more processing power? Add an ESP. components need to be in different locations? Add an ESP. If you want it a controller communication, you have to design the protocol and physical layer yourself. WiFi needs an access point. Bluetooth range is limited. LoRa requires additional hardware.
+In many applications, the easiest solution is to use multiple ESP. If you need more IO pins, just add ESPs. Need more processing power? Add an ESP. components need to be in different locations? Add more devices and let them talk.
 
 ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving you publish/subscribe messaging across multiple devices without managing connections, pairing tables, or routing logic.
 
@@ -29,14 +29,14 @@ ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving
 
 ## How It Works
 
-ESPEZ hijacks the sender's MAC address field to carry the topic (5 bytes) and sequence number (1 byte). Every broadcast frame contains exactly 6 bytes of overhead in a field that ESP-NOW already transmits. The payload follows as normal.
+ESPEZ hijacks the sender's MAC address field to carry the topic (5 bytes) and sequence number (1 byte). Every broadcast frame contains exactly 6 bytes of overhead in a field that ESP-NOW already transmits.
 
-Each node maintains a hash table of recently seen messages. Different nodes use different hash salts, so a collision on one node rarely causes a collision on another. The mesh self-heals.
+Each node maintains a hash table of recently seen messages. Before a message is relayed, its hash is compared to this table. If a **hash table match** is found, the message is suppressed and not relayed — preventing duplicate messages from cascading through the mesh. Different nodes use different hash salts, so a collision on one node rarely causes a collision on another. The mesh self-heals.
 
 Key behaviors:
 - Local delivery always occurs if the node is subscribed to the topic — the hash table never blocks local reception
-- Retransmission only occurs if the node has relaying enabled and the message hash bit was not already set
-- Different nodes use different hash salts, so collisions don't cascade through the mesh
+- Retransmission only occurs if the node has relaying enabled and no hash table match is detected
+- Different nodes use different hash salts, so matches don't cascade through the mesh
 
 ---
 
@@ -112,7 +112,7 @@ Registers a callback invoked whenever a subscribed message arrives.
 node.loop();
 ```
 
-Must be called frequently from `loop()`. Handles incoming messages, duplicate suppression, and hash table maintenance.
+Must be called frequently from `loop()`. Handles incoming messages, hash table match detection, and hash table maintenance.
 
 ### Diagnostics
 
@@ -140,7 +140,7 @@ All configuration is done at compile time in `ESPEZ.h`:
 | 512 bits  | 64 bytes |
 | 1024 bits | 128 bytes |
 
-Larger hash tables reduce false duplicates. Shorter clear intervals make the mesh more responsive to new messages.
+Larger hash tables reduce false hash table matches. Shorter clear intervals make the mesh more responsive to new messages.
 
 ---
 
@@ -307,4 +307,4 @@ With ESP-NOW at 1 Mbps and typical 10-byte payloads:
 
 ---
 
-*The protocol was originally developed for a twin-screw yacht with two helm stations, a generator room, and a wastewater treatment plant — a challenging environment with steel bulkheads and long distances. The yacht was lost to Hurricane Sally before the project was complete. The code survived.*
+*The protocol was originally developed for a twin-screw yacht with two helm stations, a generator room, and a wastewater treatment plant — a challenging environment with steel bulkheads and long cable runs.*
