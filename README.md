@@ -70,8 +70,6 @@ Help messages can be used to:
 - Enable or disable specific relays
 - Guide node or antenna placement
 
-
-
 ## API Reference
 
 ### Creating a Node
