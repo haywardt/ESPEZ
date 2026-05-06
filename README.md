@@ -220,14 +220,14 @@ node.begin(NETWORK_ID, 16, 6);   // all nodes on channel 6
 
 ```cpp
 WiFi.begin(ssid, password);      // AP determines the channel
-node.begin(NETWORK_ID, 16);      // channel = 0: inherit current
+node.begin(NETWORK_ID, 16, 0);   // channel 0: inherits AP's channel
 ```
 
 **ESPEZ with WiFi AP** — configure the AP channel before calling `begin()`, then inherit it:
 
 ```cpp
 WiFi.softAP(ssid, password, 6);  // fix AP to channel 6
-node.begin(NETWORK_ID, 16);      // channel = 0: inherits channel 6
+node.begin(NETWORK_ID, 16, 0);   // channel 0: inherits channel 6
 ```
 
 ### Diagnostics Topic
