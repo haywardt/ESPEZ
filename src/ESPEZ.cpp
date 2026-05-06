@@ -144,7 +144,7 @@ void ESPEZNode::_handleReceive(const uint8_t *srcMac,
     uint16_t rxCrc   = (static_cast<uint16_t>(data[0]) << 8) | data[1];
     uint16_t calcCrc = _checksum(srcMac, data + 2, len - 2);
     if (rxCrc != calcCrc) {
-        _sendHelp(ESPEZ_HELP_FOREIGN, 0);
+        _sendHelp(ESPEZ_HELP_BADCHECK, 0);
         return;
     }
 

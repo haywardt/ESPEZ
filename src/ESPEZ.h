@@ -17,9 +17,10 @@
 
 // Help message types (payload byte 0)
 #define ESPEZ_HELP_NODEID   0x01    // Node ID broadcast
-#define ESPEZ_HELP_FOREIGN  0x02    // Foreign network / bad checksum detected
-#define ESPEZ_HELP_SEQSKIP  0x03    // Sequence gap detected (payload byte 1 = gap size)
-#define ESPEZ_HELP_DUPS     0x04    // Duplicates since last clear (payload byte 1 = count)
+#define ESPEZ_HELP_FOREIGN  0x02    // Foreign network ID detected
+#define ESPEZ_HELP_BADCHECK 0x03    // Bad checksum
+#define ESPEZ_HELP_SEQSKIP  0x04    // Sequence gap detected (payload byte 1 = gap size)
+#define ESPEZ_HELP_DUPS     0x05    // Duplicates since last clear (payload byte 1 = count)
 
 typedef void (*ESPEZCallback)(uint64_t topic, const uint8_t *payload, size_t len);
 

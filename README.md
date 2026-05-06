@@ -59,9 +59,9 @@ Receives the message from the receive function. Computes the hash and checks whe
 Help messages use topic `0x0000000000`. The payload indicates the event type:
 
 - Node ID broadcast
-- Foreign network detected
-- Skipped sequence number
+- Foreign network ID detected
 - Bad checksum
+- Skipped sequence number
 - Duplicate count since last hash table clear
 
 Help messages can be used to:
@@ -211,8 +211,9 @@ The network ID occupies the high-order bits of the 40-bit topic field; the topic
 ESPEZ reserves topic `0x0000000000` for network diagnostics. Subscribe to it to receive health information from all nodes in the mesh.
 
 ```cpp
-node.subscribe(0x0000000000);
-node.onMessage(onDiagnostic);
+node.onMessage([](uint64_t topic, const uint8_t* payload, size_t len) {
+    if (topic == ESPEZ_TOPIC_HELP) onDiagnostic(payload, len);
+});
 ```
 
 A mesh that can't diagnose itself is a black box.
