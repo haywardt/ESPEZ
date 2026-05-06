@@ -192,21 +192,19 @@ If you're not sure, alarm. A lossy protocol becomes fail-safe when silence trigg
 
 ESPEZ uses broadcast addressing. Two ESPEZ meshes within radio range will see each other's traffic. Always use a network ID.
 
-The network ID and topic share 40 bits. How you split them depends on how many topics you need:
+The network ID occupies the high-order bits of the 40-bit topic field; the topic ID occupies the low-order bits. A larger network ID leaves fewer bits for topics but increases the probability that a packet from a foreign network will fail the checksum and be rejected. A smaller network ID leaves more room for topics but reduces that protection.
 
 ```cpp
-// Few topics — use a large network ID for strong isolation
-#define NETWORK_ID 0xCAFEBABE00  // 32-bit network ID, 8 bits for topics (256 topics)
-#define TOPIC_TEMP  NETWORK_ID | 0x01
-#define TOPIC_FIRE  NETWORK_ID | 0x02
+// 16-bit network ID — 65536 possible networks, 24-bit topic space (16M topics)
+#define NETWORK_ID       ((uint64_t)0xCAFE << 24)
+#define TOPIC_TEMP        NETWORK_ID | 0x000001
+#define TOPIC_FIRE        NETWORK_ID | 0x000002
 
-// Many topics — use a 1-bit network ID to maximize topic space
-#define NETWORK_ID  ((uint64_t)1 << 39)           // 1-bit network ID
-#define TOPIC_TEMP  NETWORK_ID | 0x0000000001
-#define TOPIC_FIRE  NETWORK_ID | 0x0000000002
+// 1-bit network ID — minimal isolation, 39-bit topic space (512B topics)
+#define NETWORK_ID       ((uint64_t)1 << 39)
+#define TOPIC_TEMP        NETWORK_ID | 0x0000000001
+#define TOPIC_FIRE        NETWORK_ID | 0x0000000002
 ```
-
-Use a larger network ID when isolation matters more than topic count. Use a smaller one when you need a large topic space.
 
 ### Diagnostics Topic
 
