@@ -27,6 +27,81 @@ ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving
 
 ---
 
+## Quick Start
+
+Three sketches that work together: a publisher reading an analog input, a relay forwarding messages through the mesh, and a receiver driving a servo. All three use the same network ID and channel.
+
+### Publisher — analog input
+
+```cpp
+#include <ESPEZ.h>
+
+#define NETWORK_ID     ((uint64_t)0xCAFE << 24)
+#define TOPIC_THROTTLE (NETWORK_ID | 0x01)
+
+ESPEZNode node;
+
+void setup() {
+    node.begin(NETWORK_ID, 16, 6);
+}
+
+void loop() {
+    uint16_t val = analogRead(A0);
+    node.publish(TOPIC_THROTTLE, (uint8_t*)&val, sizeof(val));
+    node.loop();
+    delay(100);
+}
+```
+
+### Relay
+
+```cpp
+#include <ESPEZ.h>
+
+#define NETWORK_ID ((uint64_t)0xCAFE << 24)
+
+ESPEZNode node;
+
+void setup() {
+    node.begin(NETWORK_ID, 16, 6);
+}
+
+void loop() {
+    node.loop(RELAY_ON);
+}
+```
+
+### Receiver — servo output
+
+```cpp
+#include <ESPEZ.h>
+#include <Servo.h>
+
+#define NETWORK_ID     ((uint64_t)0xCAFE << 24)
+#define TOPIC_THROTTLE (NETWORK_ID | 0x01)
+
+ESPEZNode node;
+Servo servo;
+
+void setup() {
+    servo.attach(13);
+    node.begin(NETWORK_ID, 16, 6);
+    node.onMessage([](uint64_t topic, const uint8_t* payload, size_t len) {
+        if (topic == TOPIC_THROTTLE && len >= 2) {
+            uint16_t val;
+            memcpy(&val, payload, 2);
+            servo.write(map(val, 0, 4095, 0, 180));
+        }
+    });
+}
+
+void loop() {
+    node.loop();
+}
+```
+
+---
+
 ## How It Works
 
 ESPEZ hijacks the sender's MAC address field to carry the topic (5 bytes) and sequence number (1 byte). Every broadcast frame contains exactly 6 bytes of overhead in a field that ESP-NOW already transmits.
