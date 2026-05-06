@@ -31,13 +31,12 @@ ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving
 
 ESPEZ hijacks the sender's MAC address field to carry the topic (5 bytes) and sequence number (1 byte). Every broadcast frame contains exactly 6 bytes of overhead in a field that ESP-NOW already transmits.
 
-Each node maintains a hash table of recently seen messages. Before a message is relayed, its hash is compared to this table. If a **hash table match** is found, the message is suppressed and not relayed — preventing duplicate messages from cascading through the mesh. Different nodes use different hash salts, so a collision on one node rarely causes a collision on another. The mesh self-heals.
+Each relay node maintains a hash table of recently seen messages. Before a message is relayed, its hash is compared to this table. If a **hash table match** is found, the message is suppressed and not relayed — preventing duplicate messages from cascading through the mesh. Different nodes use different hash salts, so a hash table match  on one node rarely causes a match on another.   
 
 Key behaviors:
 - Local delivery always occurs if the node is subscribed to the topic — the hash table never blocks local reception
 - Retransmission only occurs if the node has relaying enabled and no hash table match is detected
-- Different nodes use different hash salts, so matches don't cascade through the mesh
-
+- Different nodes use different hash salts, so two messages that generate the same value on one relay don't on the others 
 ---
 
 ## Quick Start
