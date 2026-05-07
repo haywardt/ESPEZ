@@ -24,6 +24,9 @@
 #define RELAY_ON  true
 #define RELAY_OFF false
 
+#define LR_ON  true
+#define LR_OFF false
+
 // Help message types (payload byte 0)
 #define ESPEZ_HELP_NODEID   0x01    // Node ID broadcast (bytes 1-6 = hardware MAC)
 #define ESPEZ_HELP_FOREIGN  0x02    // Foreign network ID detected
@@ -36,7 +39,7 @@ typedef void (*ESPEZCallback)(uint64_t topic, const uint8_t *payload, size_t len
 class ESPEZNode {
 public:
     ESPEZNode();
-    void begin(uint64_t networkID = 0, uint8_t networkBits = 0, uint8_t channel = 0);
+    void begin(uint64_t networkID = 0, uint8_t networkBits = 0, uint8_t channel = 0, bool longRange = false);
     void publish(uint64_t topic, const uint8_t *payload, size_t len);
     void onMessage(ESPEZCallback callback);
     void loop(bool relay_enable = false);

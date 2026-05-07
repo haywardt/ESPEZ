@@ -31,7 +31,7 @@ ESPEZNode::ESPEZNode()
     memset(_helpQueue, 0, sizeof(_helpQueue));
 }
 
-void ESPEZNode::begin(uint64_t networkID, uint8_t networkBits, uint8_t channel) {
+void ESPEZNode::begin(uint64_t networkID, uint8_t networkBits, uint8_t channel, bool longRange) {
     _instance = this;
 
     WiFi.mode(WIFI_STA);
@@ -39,6 +39,8 @@ void ESPEZNode::begin(uint64_t networkID, uint8_t networkBits, uint8_t channel) 
 
 #ifdef ESP32
     if (channel > 0) esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+    if (longRange)
+        esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N | WIFI_PROTOCOL_LR);
     esp_wifi_get_mac(WIFI_IF_STA, _mac);
 #else
     wifi_get_macaddr(STATION_IF, _mac);
