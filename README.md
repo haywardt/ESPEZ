@@ -29,25 +29,26 @@ ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving
 
 ## Quick Start
 
-Three sketches that work together: a publisher reading an analog input, a relay forwarding messages through the mesh, and a receiver driving a servo. All three use the same network ID and channel.
+Three sketches that work together: a publisher reading the built-in button, a relay forwarding messages through the mesh, and a receiver controlling the built-in LED. All three use the same network ID and channel.
 
-### Publisher — analog input
+### Publisher — built-in button
 
 ```cpp
 #include <ESPEZ.h>
 
-#define NETWORK_ID     ((uint64_t)0xCAFE << 24)
-#define TOPIC_THROTTLE (NETWORK_ID | 0x01)
+#define NETWORK_ID   ((uint64_t)0xCAFE << 24)
+#define TOPIC_BUTTON (NETWORK_ID | 0x01)
 
 ESPEZNode node;
 
 void setup() {
+    pinMode(0, INPUT_PULLUP);  // BOOT button, active low
     node.begin(NETWORK_ID, 16, 6);
 }
 
 void loop() {
-    uint16_t val = analogRead(A0);
-    node.publish(TOPIC_THROTTLE, (uint8_t*)&val, sizeof(val));
+    uint8_t val = digitalRead(0) == LOW ? 1 : 0;
+    node.publish(TOPIC_BUTTON, &val, sizeof(val));
     node.loop();
     delay(100);
 }
@@ -71,26 +72,22 @@ void loop() {
 }
 ```
 
-### Receiver — servo output
+### Receiver — built-in LED
 
 ```cpp
 #include <ESPEZ.h>
-#include <Servo.h>
 
-#define NETWORK_ID     ((uint64_t)0xCAFE << 24)
-#define TOPIC_THROTTLE (NETWORK_ID | 0x01)
+#define NETWORK_ID   ((uint64_t)0xCAFE << 24)
+#define TOPIC_BUTTON (NETWORK_ID | 0x01)
 
 ESPEZNode node;
-Servo servo;
 
 void setup() {
-    servo.attach(13);
+    pinMode(LED_BUILTIN, OUTPUT);
     node.begin(NETWORK_ID, 16, 6);
     node.onMessage([](uint64_t topic, const uint8_t* payload, size_t len) {
-        if (topic == TOPIC_THROTTLE && len >= 2) {
-            uint16_t val;
-            memcpy(&val, payload, 2);
-            servo.write(map(val, 0, 4095, 0, 180));
+        if (topic == TOPIC_BUTTON && len >= 1) {
+            digitalWrite(LED_BUILTIN, payload[0] ? HIGH : LOW);
         }
     });
 }
