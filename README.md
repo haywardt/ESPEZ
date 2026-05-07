@@ -31,6 +31,8 @@ ESP-NOW solves the radio problem. ESPEZ solves the networking problem — giving
 
 Three sketches that work together: a publisher reading the built-in button, a relay forwarding messages through the mesh, and a receiver controlling the built-in LED. All three use the same network ID and channel.
 
+Ready-to-flash versions are in the `examples/` directory. The example receiver targets boards with a WS2812B RGB LED (e.g. Waveshare ESP32-C3-Zero) and requires the [Adafruit NeoPixel](https://github.com/adafruit/Adafruit_NeoPixel) library. The example relay adds help channel diagnostics on Serial at 115200 baud.
+
 ### Publisher — built-in button
 
 ```cpp
