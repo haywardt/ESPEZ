@@ -174,8 +174,8 @@ void ESPEZNode::_handleReceive(const uint8_t *srcMac,
                       srcMac[4];
     uint8_t seq = srcMac[5];
 
-    // Reject packets whose network ID doesn't match ours
-    if (_networkMask != 0 && (topic & _networkMask) != _networkID) {
+    // Reject packets whose network ID doesn't match ours (help topic is always accepted)
+    if (topic != ESPEZ_TOPIC_HELP && _networkMask != 0 && (topic & _networkMask) != _networkID) {
         _sendHelp(ESPEZ_HELP_FOREIGN, 0);
         return;
     }
