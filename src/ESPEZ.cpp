@@ -122,11 +122,10 @@ void ESPEZNode::loop(bool relay_enable) {
 
     unsigned long now = millis();
     if (now - _lastClear >= static_cast<unsigned long>(ESPEZ_CLEAR_INTERVAL * 1000)) {
-        if (_dupCount > 0) {
-            _sendHelp(ESPEZ_HELP_DUPS,
-                      _dupCount > 255 ? 255 : static_cast<uint8_t>(_dupCount));
-            _dupCount = 0;
+        if (_dupCount > 255) {
+            _sendHelp(ESPEZ_HELP_DUPS, 255);
         }
+        _dupCount = 0;
         memset(_hashTable, 0, sizeof(_hashTable));
         _lastClear = now;
     }
