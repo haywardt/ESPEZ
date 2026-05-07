@@ -6,6 +6,16 @@ Any node can publish to a topic. All nodes are subscribed to all topics. The mes
 
 ---
 
+## Installation
+
+1. Download or clone this repository.
+2. Copy the folder to your Arduino libraries directory (typically `~/Arduino/libraries/ESPEZ/`), or install from a `.zip` via **Sketch → Include Library → Add .ZIP Library** in the Arduino IDE.
+3. Include the library in your sketch with `#include <ESPEZ.h>`.
+
+No additional dependencies are required. The ESP-NOW and WiFi libraries are included with the [arduino-esp32](https://github.com/espressif/arduino-esp32) and [arduino-esp8266](https://github.com/esp8266/Arduino) board packages.
+
+---
+
 ## Why ESPEZ Exists
 
 In many applications, the easiest solution is to use multiple ESPs. If you need more IO pins, just add ESPs. Need more processing power? Add an ESP. components need to be in different locations? Add more devices and let them talk.
@@ -140,7 +150,7 @@ Help messages use topic `0x0000000000`. `payload[0]` is always the message type.
 | `ESPEZ_HELP_FOREIGN` | `0x02` | — | Packet received whose network ID doesn't match this node's. |
 | `ESPEZ_HELP_BADCHECK` | `0x03` | — | Packet received with an invalid CRC. |
 | `ESPEZ_HELP_SEQSKIP` | `0x04` | gap | Sequence gap detected on a topic. Value = number of missing packets. |
-| `ESPEZ_HELP_DUPS` | `0x05` | count | Duplicates suppressed since the last hash table clear. Value capped at 255. |
+| `ESPEZ_HELP_DUPS` | `0x05` | 255 | Duplicate count exceeded 255 in the last hash table clear interval. This means more than 255 messages were suppressed in one second — the hash table may be too small for the traffic level. Increase `ESPEZ_HASH_SIZE` or decrease `ESPEZ_CLEAR_INTERVAL` to address this. |
 
 Help messages can be used to:
 - Filter by minimum RSSI
@@ -165,6 +175,8 @@ node.begin(uint64_t networkID = 0, uint8_t networkBits = 0, uint8_t channel = 0)
 ```
 
 Call once in `setup()`. Initializes ESP-NOW, configures the broadcast peer, and prepares the hash table. Pass your network ID and the number of high-order bits it occupies to enable network ID filtering — packets whose high-order bits don't match are rejected and trigger a foreign-network help message. All nodes in a mesh must be on the same WiFi channel; pass `channel` (1–13) to set it explicitly, or leave it at 0 to use the current channel.
+
+`begin()` immediately broadcasts a `ESPEZ_HELP_NODEID` help message containing the node's hardware MAC address. Any node subscribed to `ESPEZ_TOPIC_HELP` will receive this and can use it to detect when a new node joins the mesh.
 
 ### Publishing
 
@@ -192,7 +204,7 @@ Registers a callback invoked whenever a message arrives.
 node.loop(relay_enable);
 ```
 
-Must be called frequently from `loop()`. Handles incoming messages, hash table match detection, and hash table maintenance. Enables or disables relaying.
+Must be called frequently from `loop()`. Handles incoming messages, hash table match detection, and hash table maintenance. Enables or disables relaying. The constants `RELAY_ON` and `RELAY_OFF` are provided for readability; they are equivalent to `true` and `false`.
 
 ### Diagnostics
 
