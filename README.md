@@ -171,10 +171,12 @@ ESPEZNode node();
 ### Initialization
 
 ```cpp
-node.begin(uint64_t networkID = 0, uint8_t networkBits = 0, uint8_t channel = 0);
+node.begin(uint64_t networkID = 0, uint8_t networkBits = 0, uint8_t channel = 0, bool longRange = false);
 ```
 
 Call once in `setup()`. Initializes ESP-NOW, configures the broadcast peer, and prepares the hash table. Pass your network ID and the number of high-order bits it occupies to enable network ID filtering — packets whose high-order bits don't match are rejected and trigger a foreign-network help message. All nodes in a mesh must be on the same WiFi channel; pass `channel` (1–13) to set it explicitly, or leave it at 0 to use the current channel.
+
+Pass `LR_ON` (or `true`) for `longRange` to enable ESP-NOW Long Range mode. This uses Espressif's proprietary LR PHY, which improves range and wall penetration at the cost of throughput. **All nodes in the mesh must use the same setting** — a node in LR mode cannot communicate with a node in standard mode. LR mode is ESP32 only; the parameter is ignored on ESP8266.
 
 `begin()` immediately broadcasts a `ESPEZ_HELP_NODEID` help message containing the node's hardware MAC address. Any node subscribed to `ESPEZ_TOPIC_HELP` will receive this and can use it to detect when a new node joins the mesh.
 
@@ -204,7 +206,7 @@ Registers a callback invoked whenever a message arrives.
 node.loop(relay_enable);
 ```
 
-Must be called frequently from `loop()`. Handles incoming messages, hash table match detection, and hash table maintenance. Enables or disables relaying. The constants `RELAY_ON` and `RELAY_OFF` are provided for readability; they are equivalent to `true` and `false`.
+Must be called frequently from `loop()`. Handles incoming messages, hash table match detection, and hash table maintenance. Enables or disables relaying. The constants `RELAY_ON` and `RELAY_OFF` are provided for readability; they are equivalent to `true` and `false`. See also `LR_ON` / `LR_OFF` for the `begin()` long range parameter.
 
 ### Diagnostics
 
